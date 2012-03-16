@@ -3,11 +3,13 @@ package com.drinkindroid;
 import static org.andengine.extension.physics.box2d.util.constants.PhysicsConstants.PIXEL_TO_METER_RATIO_DEFAULT;
 
 import android.graphics.Typeface;
-import android.opengl.GLES20;
+import android.util.Log;
 import org.andengine.engine.camera.Camera;
+import org.andengine.engine.handler.IUpdateHandler;
 import org.andengine.engine.options.EngineOptions;
 import org.andengine.engine.options.EngineOptions.ScreenOrientation;
 import org.andengine.engine.options.resolutionpolicy.RatioResolutionPolicy;
+import org.andengine.entity.IEntity;
 import org.andengine.entity.modifier.*;
 import org.andengine.entity.primitive.Rectangle;
 import org.andengine.entity.scene.Scene;
@@ -100,7 +102,7 @@ public class PhysicsExample extends SimpleBaseGameActivity implements IAccelerat
 
     @Override
     public EngineOptions onCreateEngineOptions() {
-        Toast.makeText(this, "Touch the screen to add objects.", Toast.LENGTH_LONG).show();
+//        Toast.makeText(this, "Touch the screen to add objects.", Toast.LENGTH_LONG).show();
 
         final Camera camera = new Camera(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
 
@@ -158,7 +160,52 @@ public class PhysicsExample extends SimpleBaseGameActivity implements IAccelerat
 
         this.mScene.registerUpdateHandler(this.mPhysicsWorld);
 
-        final Text text = new TickerText(CAMERA_WIDTH / 2, CAMERA_HEIGHT / 2, this.mFont, "FREE THE DUDES\n\nGO!", new TickerText.TickerTextOptions(HorizontalAlign.CENTER, 20), this.getVertexBufferObjectManager());
+        showSpinInText("FREE THE DUDES\n\nGO!");
+
+        IUpdateHandler onScreenHandler = new IUpdateHandler() {
+
+            private float freq = 1.0f;
+            private float timeSinceCheck = 0f;
+            private float totalTime = 0;
+
+            @Override
+            public void onUpdate(float pSecondsElapsed) {
+                timeSinceCheck += pSecondsElapsed;
+                if (timeSinceCheck > freq) {
+                    int foundSprites = 0;
+                    for (int i = 0; i < mScene.getChildCount(); i++) {
+                        IEntity child = mScene.getChild(i);
+                        if (child instanceof AnimatedSprite) {
+                            if (child.getY() < -10) {
+                                Log.i("DND", "Removed face.");
+                                removeFace((AnimatedSprite) child);
+                            } else {
+                                foundSprites++;
+                            }
+                        }
+                    }
+                    if (foundSprites == 0) {
+                        Log.w("DND", "--- GAME ENDED ---");
+                        showSpinInText("YOU DID IT\n\nIN " + totalTime + "s");
+                    } else {
+                        totalTime += timeSinceCheck;
+                    }
+                    timeSinceCheck = 0;
+                }
+            }
+
+            @Override
+            public void reset() {
+                //To change body of implemented methods use File | Settings | File Templates.
+            }
+        };
+        mScene.registerUpdateHandler(onScreenHandler);
+
+        return this.mScene;
+    }
+
+    private void showSpinInText(String message) {
+        final Text text = new TickerText(CAMERA_WIDTH / 2, CAMERA_HEIGHT / 2, this.mFont, message, new TickerText.TickerTextOptions(HorizontalAlign.CENTER, 20), this.getVertexBufferObjectManager());
         text.setPosition((CAMERA_WIDTH - text.getWidth()) / 2, (CAMERA_HEIGHT - text.getHeight()) / 2);
         text.registerEntityModifier(
                 new SequenceEntityModifier(
@@ -172,18 +219,18 @@ public class PhysicsExample extends SimpleBaseGameActivity implements IAccelerat
         );
 //        text.setBlendFunction(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         mScene.attachChild(text);
-
-        return this.mScene;
     }
 
     @Override
     public boolean onSceneTouchEvent(final Scene pScene, final TouchEvent pSceneTouchEvent) {
+/*
         if (this.mPhysicsWorld != null) {
             if (pSceneTouchEvent.isActionDown()) {
                 this.addFace(pSceneTouchEvent.getX(), pSceneTouchEvent.getY());
                 return true;
             }
         }
+*/
         return false;
     }
 
@@ -242,6 +289,18 @@ public class PhysicsExample extends SimpleBaseGameActivity implements IAccelerat
 
         this.mScene.attachChild(face);
         this.mPhysicsWorld.registerPhysicsConnector(new PhysicsConnector(face, body, true, true));
+    }
+
+    private void removeFace(final AnimatedSprite face) {
+        final PhysicsConnector facePhysicsConnector = this.mPhysicsWorld.getPhysicsConnectorManager().findPhysicsConnectorByShape(face);
+
+        this.mPhysicsWorld.unregisterPhysicsConnector(facePhysicsConnector);
+        this.mPhysicsWorld.destroyBody(facePhysicsConnector.getBody());
+
+        this.mScene.unregisterTouchArea(face);
+        this.mScene.detachChild(face);
+
+        System.gc();
     }
 
     /**
