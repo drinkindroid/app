@@ -1,6 +1,1 @@
-[submodule "AndEngine"]
-	path = AndEngine
-	url = git@github.com:drinkindroid/AndEngine.git
-[submodule "AndEnginePhysicsBox2DExtension"]
-	path = AndEnginePhysicsBox2DExtension
-	url = git@github.com:drinkindroid/AndEnginePhysicsBox2DExtension.git
+
