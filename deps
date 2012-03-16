@@ -1,0 +1,5 @@
+#!/bin/bash
+
+git submodule init
+git submodule update
+echo "What do you think I was going to do? Bake you a cake?"
